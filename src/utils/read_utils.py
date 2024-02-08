@@ -1,8 +1,12 @@
 import pandas as pd
 import numpy as np
 import scipy as sp
+
 from sklearn.model_selection import train_test_split
 from icecream import ic
+
+import os
+import pathlib
 
 def read_mat_emps(args):
     mat = sp.io.loadmat(args.PATH_DATA)
@@ -67,3 +71,16 @@ def import_data_(args):
     x_val, x_test, y_val, y_test = train_test_split(x_test, y_test, test_size=args.TEST_SPLIT/(args.TEST_SPLIT + args.VAL_SPLIT)) 
 
     return t, x_train, x_val, x_test, y_train, y_val, y_test 
+
+def make_files_location():
+    ini_loc = pathlib.Path('../').parent.resolve()
+    dir_res = os.path.join(ini_loc, "Results_")
+    if not os.path.isdir(dir_res):
+        os.makedirs(dir_res)
+        loc_res = os.path.join(dir_res, 'Test_11')
+    else:
+        existing = [int(name[-2:]) for name in os.listdir(dir_res)]
+        loc_res  =os.path.join(dir_res, f'Test_{max(existing)+1}')
+    os.makedirs(loc_res)
+    return loc_res
+    

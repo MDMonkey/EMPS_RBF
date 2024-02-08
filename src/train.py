@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
 
 if __name__ == "__main__":
@@ -103,6 +104,19 @@ if __name__ == "__main__":
 
         print('Epoch: {} \tTraining Loss: {:.6f} \t'.format(epoch, train_loss))
 
+    #Save model
+    results_folder = make_files_location()
+    results_file = results_folder + r'\\model.pth'
+    T.save(model.state_dict(), results_file)
+    result_loss = results_folder + r'\\loss.txt'
+    F = open(result_loss,"w")
+ 
+    # \n is placed to indicate EOL (End of Line)
+    F.write(results_folder+" \n")
+    F.write('Epoch: {} \tTraining Loss: {:.6f} \t'.format(epoch, train_loss))
+
+    ######################## Testing #############	
+
     #prediction results after training
     initial_state_test = T.zeros(2)
     initial_state_test[0] = Tensor(y_test[0]).to(device)
@@ -110,9 +124,13 @@ if __name__ == "__main__":
     yPred = model(u_test, initial_state_test)
     ic(yPred.shape)
     yPred = yPred.detach().cpu().numpy()[0,:]
-
     y_test = y_test.detach().cpu().numpy()
-    ic(yPred.shape)
+    
+    F.write('\n TEST \n')
+    F.write('R2 score: {} \n MAE: {} \n MSE: {} \t'.format(r2_score(y_test, yPred), mean_absolute_error(y_test, yPred), mean_squared_error(y_test, yPred)))
+    F.close()
+
+    
     # plotting prediction results
     plt.plot(t_test, y_test, 'gray')
     plt.plot(t_test, yPred, 'b', label='after training')

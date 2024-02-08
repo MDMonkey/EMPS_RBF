@@ -17,13 +17,13 @@ def load_args():
 	#RBF
 	parser.add_argument('--IN_FEATURES', default=1, type=int)
 	parser.add_argument('--OUT_FEATURES', default=1)
-	parser.add_argument('--NUM_KERNELS', default=2, type=int)
+	parser.add_argument('--NUM_KERNELS', default=8, type=int)
 
 
 	#Training
-	parser.add_argument('--BATCH_SIZE', default=100, type=int)
-	parser.add_argument('--N_EPOCHS', default=1, type=int)
-	parser.add_argument('--LEARNING_RATE', default=0.001, type=float)
+	parser.add_argument('--BATCH_SIZE', default=400, type=int)
+	parser.add_argument('--N_EPOCHS', default=10, type=int)
+	parser.add_argument('--LEARNING_RATE', default=0.01, type=float)
 
 	
 
