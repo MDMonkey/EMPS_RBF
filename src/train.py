@@ -48,13 +48,16 @@ if __name__ == "__main__":
     layer_centres = [1]
     basis_func = rbf.gaussian
 
-    rbf = rbf_network(layer_widths, layer_centres, basis_func)
-    rbf.to(device)
+    #rbf = rbf_network(layer_widths, layer_centres, basis_func)
+    #rbf.to(device)
 
     #OPTION 2  https://github.com/rssalessio/PytorchRBFLayer/tree/main
-    """ rbf = rbf_network_(args)
-    rbf.to(device) """
+    rbf = rbf_network_(args)
+    rbf.to(device)
 
+    ic(rbf.rbf.kernels_centers)
+    ic(rbf.rbf.weights)
+    ic(rbf.rbf.log_shapes)
     #################### Runge Kutta ###########################
 
     rk4 = RungeKuttaIntegratorCell(dt, rbf_layer=rbf)

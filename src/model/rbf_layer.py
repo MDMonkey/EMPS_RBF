@@ -174,6 +174,11 @@ class RBFLayer(nn.Module):
         if self.initial_weights_parameters is None:
             nn.init.xavier_uniform_(self.weights, gain=gain_weights)
 
+    def search_interval(self, input, low, upp):
+        l = (upp - low) / 2
+        v1 = l * torch.tanh(input) + l + low
+        return v1
+
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """
         Computes the ouput of the RBF layer given an input vector
@@ -200,17 +205,23 @@ class RBFLayer(nn.Module):
         c = self.kernels_centers.expand(batch_size, self.num_kernels,
                                         self.in_features_dim)
 
+        #Rescale
+        c = self.search_interval(c, -1, 1)
+
         diff = input.view(batch_size, 1, self.in_features_dim) - c
 
         # Apply norm function; c has size B x num_kernels
         r = self.norm_function(diff)
 
+        sigma = self.log_shapes.expand(batch_size, self.num_kernels) 
+        sigma = self.search_interval(sigma, 0.01, 1)
+
+
         # Apply parameter, eps_r has size B x num_kernels
-        eps_r = self.log_shapes.exp().expand(batch_size, self.num_kernels) * r
+        eps_r = r / sigma
 
         # Apply radial basis function; rbf has size B x num_kernels
         rbfs = self.radial_function(eps_r)
-
         # Apply normalization
         # (check https://en.wikipedia.org/wiki/Radial_basis_function_network)
         if self.normalization:
@@ -218,9 +229,11 @@ class RBFLayer(nn.Module):
             rbfs = rbfs / (1e-9 + rbfs.sum(dim=-1)).unsqueeze(-1)
 
         # Take linear combination
-        out = self.weights.expand(batch_size, self.out_features_dim,
-                                  self.num_kernels) * rbfs.view(
-                                      batch_size, 1, self.num_kernels)
+        wi = self.weights.expand(batch_size, self.out_features_dim,
+                                  self.num_kernels)
+
+        wi = self.search_interval(wi, -100, 100)
+        out = wi*rbfs.view(batch_size, 1, self.num_kernels)
 
         return out.sum(dim=-1)
 
