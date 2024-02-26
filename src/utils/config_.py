@@ -17,7 +17,7 @@ def load_args():
 	#RBF
 	parser.add_argument('--IN_FEATURES', default=1, type=int)
 	parser.add_argument('--OUT_FEATURES', default=1)
-	parser.add_argument('--NUM_KERNELS', default=8, type=int)
+	parser.add_argument('--NUM_KERNELS', default=2, type=int)
 
 
 	#Training

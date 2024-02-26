@@ -139,7 +139,7 @@ class rbf_network_(nn.Module):
 
     # Gaussian RBF
     def rbf_gaussian(self,x):
-        return (-x.pow(2)).exp()
+        return (-0.5*x.pow(2)).exp()
     
     def forward(self,x):
         return self.rbf(x)
