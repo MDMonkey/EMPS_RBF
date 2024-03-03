@@ -11,7 +11,8 @@ from torch import (
     diag,
     sign,
     norm,
-    utils
+    utils,
+    no_grad
     )
 from model.rbf_layer import RBFLayer
 from icecream import ic
@@ -79,9 +80,53 @@ class RungeKuttaIntegratorCell_(nn.Module):
         return Tensor([[ydot], [(u - ydot*214.9261-19.3607*sign(ydot)-rbf_layer(ydot)+3.2902)/95.45]])
 
 
-class RungeKuttaIntegratorCell(nn.Module):
+class RungeKuttaIntegratorCell_cpu(nn.Module):
     def __init__(self, dt,rbf_layer, **kwargs):
-        super(RungeKuttaIntegratorCell, self).__init__(**kwargs)
+        super(RungeKuttaIntegratorCell_cpu, self).__init__(**kwargs)
+
+        self.state_size    = 2
+        self.A  = Tensor([0., 0.5, 0.5, 1.0]).cpu()
+        self.B  = Tensor([[1/6, 2/6, 2/6, 1/6]]).cpu()
+        self.dt = Tensor(dt).cpu()
+        self.rbf_layer = rbf_layer
+
+        self.M = Tensor([1/95.4520]).cpu()
+        self.offst = Tensor([-3.2902]).cpu()
+        self.F_v = Tensor([214.9261]).cpu()
+        self.F_c = Tensor([19.3607]).cpu()
+        #Matrizes
+        self.u_ = Tensor([[0],[1]]).cpu()
+        self.y_ = Tensor([[0,1],[0,0]]).cpu()
+        self.F_v_ = Tensor([[0,0],[0,self.F_v]]).cpu()
+        self.F_f_ = Tensor([[0,0],[0,self.F_c]]).cpu()
+        self.C_ = Tensor([[0],[1]]).cpu()
+        
+    def forward(self, inputs, states):
+        ydot   = states.view(2,-1).cpu() #[q,qdot]
+        yddoti = self._fun(inputs, ydot)
+        #k1
+        ydoti  = ydot + self.A[0] * yddoti * self.dt
+        k1     = self._fun(inputs, ydoti)
+        #k2
+        ydot2 = ydot + self.A[1] * yddoti * self.dt
+        k2     = self._fun(inputs, ydot2)
+        #k3
+        ydot3 = ydot + self.A[2] * yddoti * self.dt
+        k3     = self._fun(inputs, ydot3)
+        #k4
+        ydot4 = ydot + self.A[3] * yddoti * self.dt
+        k4    = self._fun(inputs, ydot4)
+
+        st_n = self.dt/6.0*(k1+2*k2+2*k3+k4)
+        return st_n.view(2)
+    
+    def _fun(self, u, ydot):
+        return linalg.matmul(self.y_,ydot)+(self.u_*u - linalg.matmul(self.F_v_,ydot) - linalg.matmul(self.F_f_,ydot) - self.C_*(self.offst+self.rbf_layer(ydot[1])))*self.M
+    
+
+class RungeKuttaIntegratorCell_cuda(nn.Module):
+    def __init__(self, dt,rbf_layer, **kwargs):
+        super(RungeKuttaIntegratorCell_cuda, self).__init__(**kwargs)
 
         self.state_size    = 2
         self.A  = Tensor([0., 0.5, 0.5, 1.0]).cuda()
@@ -89,7 +134,7 @@ class RungeKuttaIntegratorCell(nn.Module):
         self.dt = Tensor(dt).cuda()
         self.rbf_layer = rbf_layer
 
-        self.M = Tensor([1/95.45]).cuda()
+        self.M = Tensor([1/95.4520]).cuda()
         self.offst = Tensor([-3.2902]).cuda()
         self.F_v = Tensor([214.9261]).cuda()
         self.F_c = Tensor([19.3607]).cuda()
@@ -117,11 +162,12 @@ class RungeKuttaIntegratorCell(nn.Module):
         k4    = self._fun(inputs, ydot4)
 
         st_n = self.dt/6.0*(k1+2*k2+2*k3+k4)
+        st_n = st_n.cuda()
         return st_n.view(2)
     
     def _fun(self, u, ydot):
-        return linalg.matmul(self.y_,ydot)+(self.u_*u - linalg.matmul(self.F_v_,ydot) - linalg.matmul(self.F_f_,ydot) - self.C_*(self.offst+self.rbf_layer(ydot[1])))*self.M
-    
+        res = linalg.matmul(self.y_,ydot)+(self.u_*u - linalg.matmul(self.F_v_,ydot) - linalg.matmul(self.F_f_,ydot) - self.C_*(self.offst+self.rbf_layer(ydot[1])))*self.M
+        return res.cuda()
     
 
 class rbf_network_(nn.Module):
@@ -145,8 +191,6 @@ class rbf_network_(nn.Module):
         return self.rbf(x)
 
 
-
-    
 class rbf_network(nn.Module):
     def __init__(self, layer_widths, layer_centres, basis_func):
         super(rbf_network, self).__init__()
@@ -173,3 +217,40 @@ class Dataset_loader(utils.data.Dataset):
     
     def __getitem__(self, idx):
         return self.input[idx], self.output[idx]
+    
+
+def validate(network, u_valid, y_valid, initial_state, loss_function):
+  """
+  This function validates convnet parameter optimizations
+  """
+  #  creating a list to hold loss per batch
+  loss_per_batch = 0.0
+
+  #  defining model state
+  network.eval()
+
+  #  defining dataloader
+
+  print('validating...')
+  #  preventing gradient calculations since we will not be optimizing
+  with no_grad():
+    #  iterating through batches
+    
+    #--------------------------------------
+    #  sending images and labels to device
+    #--------------------------------------
+    outputs = network.forward(u_valid, initial_state)
+    outputs = outputs[0,:]
+
+    # calculate the loss
+    output_data = y_valid[:,0]
+    # calculate the loss
+    loss_x1 = loss_function(outputs, output_data.float())
+
+    #-----------------
+    #  computing loss
+    #-----------------
+    loss = loss_x1
+    loss_per_batch+= loss.item()
+
+  return loss_per_batch 

@@ -20,7 +20,7 @@ if __name__ == "__main__":
     np.random.seed(32)
 
     #Device
-    device = T.device('cuda' if T.cuda.is_available() else 'cpu')
+    device = T.device('cpu')
     print(device)
 
     #Data
@@ -67,11 +67,13 @@ if __name__ == "__main__":
     model = RNN_Cell(rk4)
     model.to(device)
 
+    model.load_state_dict(T.load(r'C:\Users\totti\OneDrive\Documents\Coding\rk_function\EMPS_RBF\Results_\Test_20\model.pth'))
+
     ######################## Training #############
     #Loss and Optimizer
     loss_func = T.nn.MSELoss()
     optimizer = T.optim.Adam(model.parameters(), lr=args.LEARNING_RATE)
-    step_lr_scheduler = T.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=7,gamma=0.1)
+    #step_lr_scheduler = T.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=7,gamma=0.1)
     best_loss = 10
 
     #Training
@@ -101,7 +103,7 @@ if __name__ == "__main__":
             print(i)
         
         # update the lr scheduler
-        step_lr_scheduler.step()
+        #step_lr_scheduler.step()
 
         train_loss = train_loss/len(train_dataloader)
 

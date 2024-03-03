@@ -144,8 +144,8 @@ class RBFLayer(nn.Module):
 
     def reset(self,
               upper_bound_kernels: float = 1.0,
-              std_shapes: float = 0.1,
-              gain_weights: float = 1.0) -> None:
+              std_shapes: float = 10.0,
+              gain_weights: float = 10.0) -> None:
         """
         Resets all the parameters.
 
@@ -172,12 +172,13 @@ class RBFLayer(nn.Module):
             nn.init.normal_(self.log_shapes, mean=0.0, std=std_shapes)
 
         if self.initial_weights_parameters is None:
-            nn.init.xavier_uniform_(self.weights, gain=gain_weights)
+            nn.init.normal_(self.weights, mean=0.0, std=gain_weights)
 
     def search_interval(self, input, low, upp):
-        l = (upp - low) / 2
-        v1 = l * torch.tanh(input) + l + low
-        return v1
+        #l = (upp - low) / 2
+        #v1 = l * torch.tanh(input) + l + low
+        return torch.clamp(input, min=low, max=upp)
+    
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """
