@@ -1,6 +1,7 @@
 from utils.read_utils import *
 from utils.config_ import *
 from model.utils_pytorch import *
+from model.lbfgsnew import *
 
 import torch as T
 from torch.utils.data import DataLoader
@@ -27,6 +28,7 @@ if __name__ == "__main__":
         device = T.device('cpu')
     print(device)
 
+    dtype = T.float64
 
     #Data
     #Train
@@ -40,8 +42,11 @@ if __name__ == "__main__":
     #Initial 
     initial_state_test = T.zeros(2)
     initial_state_test[0] = Tensor(y_test[0]).to(device)
+    #initial_state_test[1] = Tensor([-0.0457]).to(device)
     y_test = y_test[1:]
     u_test = u_test[1:]
+    y_test = y_test[1:int(0.3*len(y_test))]
+    u_test = u_test[1:int(0.3*len(u_test))]
 
     initial_state = T.zeros(2)
     initial_state[0] = Tensor(y_train[0]).to(device)
@@ -50,7 +55,9 @@ if __name__ == "__main__":
 
     y_train = y_train[1:]
     u_train = u_train[1:]
-    
+    y_train = y_train[1:int(0.3*len(y_train))]
+    u_train = u_train[1:int(0.3*len(u_train))]
+
     #################### RBF - Layer ###########################
     #Option 1 - https://github.com/JeremyLinux/PyTorch-Radial-Basis-Function-Layer/tree/master
     #Features
@@ -80,13 +87,19 @@ if __name__ == "__main__":
     model = RNN_Cell(rk4)
     model.to(device)
 
-    #model.load_state_dict(T.load(r"C:\Users\totti\OneDrive\Documents\Coding\rk_function\EMPS_RBF\other\EMPS_RBF-modified_rbf\Results_\Test_55\best_model.pth"))
+    #model.load_state_dict(T.load(r"C:\Users\totti\OneDrive\Documents\Coding\rk_function\EMPS_RBF\Results_\Test_65\best_model.pth"))
 
     ######################## Training #############
     #Loss and Optimizer
     loss_func = T.nn.MSELoss()
     #optimizer = T.optim.Adam(model.parameters(), lr=args.LEARNING_RATE)
-    optimizer = T.optim.LBFGS(model.parameters(), history_size=20, max_iter=10, lr=args.LEARNING_RATE)
+    #optimizer = T.optim.SGD(model.parameters(), lr=args.LEARNING_RATE)
+    #optimizer = T.optim.LBFGS(model.parameters(), history_size=7, max_iter=3, lr=args.LEARNING_RATE)
+    optimizer = LBFGSNew(model.parameters(), history_size=20, max_iter=20, line_search_fn=True,batch_mode=True)
+    
+
+    early_stopper = ValidationLossEarlyStopping(patience=4, min_delta=1e-9)
+
 
     #step_lr_scheduler = T.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=7,gamma=0.1)
     best_loss = 10
@@ -98,7 +111,7 @@ if __name__ == "__main__":
     output_data = y_train[:,0]
     
     #Training
-    for epoch in range(args.N_EPOCHS):
+    for epoch in tqdm(range(args.N_EPOCHS)):
         train_loss = 0.0
         initial_state = initial_state.to(device)
 
@@ -120,8 +133,10 @@ if __name__ == "__main__":
 
         # update running training loss
         train_loss += loss.item()
-        for i in model.parameters():
-            print(i)
+        
+        ic(model.cell.rbf_layer.rbf.kernels_centers)
+        ic(model.cell.rbf_layer.rbf.weights)
+        ic(model.cell.rbf_layer.rbf.log_shapes)
         
         # update the lr scheduler
         #step_lr_scheduler.step()
@@ -135,7 +150,12 @@ if __name__ == "__main__":
             best_loss = valid_loss
             T.save(model.state_dict(), results_folder+r'\\best_model.pth')
         valid_losses.append(valid_loss)
-        print('Epoch: {} \tTraining Loss: {:.8f} \tValid Loss: {:.8f} '.format(epoch, train_loss, valid_loss))
+        esr = early_stopper.early_stop_check(valid_loss)
+        print('Epoch: {} \tTraining Loss: {} \tValid Loss: {} '.format(epoch, train_loss, valid_loss))
+        if esr:
+            print('Early stopping epoch:  '+str(epoch))
+            break
+        print('Epoch: {} \tTraining Loss: {} \tValid Loss: {} '.format(epoch, train_loss, valid_loss))
 
 
     #Save model
@@ -153,7 +173,8 @@ if __name__ == "__main__":
     F.write('Batch Size: {} \t'.format(args.BATCH_SIZE))
     F.write('Number of Epochs: {} \t'.format(args.N_EPOCHS))
     F.write('Number of kernels: {} \t'.format(args.NUM_KERNELS))
-    F.write('Optimizer: {} \t'.format(str(optim)))
+    F.write('Optimizer Settings {} \t')
+    F.write(str(optimizer.__str__()))
 
 
     ######################## Testing #############	
@@ -162,13 +183,13 @@ if __name__ == "__main__":
     
 
     yPred = model(u_test, initial_state_test)
-    ic(yPred.shape)
     yPred = yPred.detach().cpu().numpy()[0,:]
     y_test = y_test.detach().cpu().numpy()
     
     F.write('\n TEST \n')
     F.write('R2 score: {} \n MAE: {} \n MSE: {} \t'.format(r2_score(y_test, yPred), mean_absolute_error(y_test, yPred), mean_squared_error(y_test, yPred)))
     F.close()
+    print('R2 score: {} \n MAE: {} \n MSE: {} \t'.format(r2_score(y_test, yPred), mean_absolute_error(y_test, yPred), mean_squared_error(y_test, yPred)))
 
     
     # plotting prediction results
@@ -182,9 +203,10 @@ if __name__ == "__main__":
     plt.show()
 
     #Plot the loss
+    plt.figure()
     epochs = (1,len(train_losses)-1)
     plt.plot(train_losses, label='Training Loss')
     plt.plot(valid_losses, label='Validation Loss')
-    plt.show()
+    plt.legend()
     plt.savefig(results_folder + r'\\loss.png', bbox_inches='tight')
-
+    plt.show()

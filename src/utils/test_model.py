@@ -38,6 +38,7 @@ if __name__ == "__main__":
     #Initial 
     initial_state_test = T.zeros(2)
     initial_state_test[0] = Tensor(y_test[0]).to(device)
+    #initial_state_test[1] = Tensor([-0.0457]).to(device)
     y_test = y_test[1:]
     u_test = u_test[1:]
 
@@ -65,7 +66,7 @@ if __name__ == "__main__":
     model = RNN_Cell(rk4)
     model.to(device)
 
-    model.load_state_dict(T.load(r"C:\Users\totti\OneDrive\Documents\Coding\rk_function\EMPS_RBF\other\EMPS_RBF-modified_rbf\Results_\Test_55\best_model.pth"))
+    model.load_state_dict(T.load(r"C:\Users\totti\OneDrive\Documents\Coding\rk_function\EMPS_RBF\Results2_\Test_11\model.pth"))
 
     output_data = y_train[:,0]
 
@@ -73,10 +74,13 @@ if __name__ == "__main__":
 
     #prediction results after training
     
-    yPred = model(u_test, initial_state_test)
+    yPred = model(u_test, initial_state)
     ic(yPred.shape)
     yPred = yPred.detach().cpu().numpy()[0,:]
     y_test = y_test.detach().cpu().numpy()
+    ic(yPred.shape)
+    ic(y_test.shape)
+    ic(output_data.shape)
 
     print('\n TEST \n')
     print('R2 score: {} \n MAE: {} \n MSE: {} \t'.format(r2_score(y_test, yPred), mean_absolute_error(y_test, yPred), mean_squared_error(y_test, yPred)))

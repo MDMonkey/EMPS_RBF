@@ -6,11 +6,11 @@ def load_args():
 	parser = argparse.ArgumentParser()
 	
     #Location
-	parser.add_argument('--PATH_TRAIN', default=r"./Data/Organized/DATA_EMPS_TEST.mat")
-	parser.add_argument('--PATH_TEST', default=r"./Data/Organized/DATA_EMPS_TRAIN.mat")
+	parser.add_argument('--PATH_TRAIN', default=r"./Data/DATA_EMPS.mat")
+	parser.add_argument('--PATH_TEST', default=r"./Data/DATA_EMPS_PULSES.mat")
 
 	#Aditional settings
-	parser.add_argument('--CUDA', default=True, type=bool)
+	parser.add_argument('--CUDA', default=False, type=bool)
 	parser.add_argument('--TRANSFER_LEARNING', default=False, type=bool)
     
 	#Pre-Processing
@@ -27,8 +27,8 @@ def load_args():
 
 	#Training
 	parser.add_argument('--BATCH_SIZE', default=1000, type=int)
-	parser.add_argument('--N_EPOCHS', default=1, type=int)
-	parser.add_argument('--LEARNING_RATE', default=1e-2, type=float)
+	parser.add_argument('--N_EPOCHS', default=20, type=int)
+	parser.add_argument('--LEARNING_RATE', default=1, type=float)
 
 	
 

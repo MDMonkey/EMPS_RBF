@@ -74,7 +74,7 @@ def import_data_(args):
 
 def make_files_location():
     ini_loc = pathlib.Path('../').parent.resolve()
-    dir_res = os.path.join(ini_loc, "Results_")
+    dir_res = os.path.join(ini_loc, "Results2_")
     if not os.path.isdir(dir_res):
         os.makedirs(dir_res)
         loc_res = os.path.join(dir_res, 'Test_11')

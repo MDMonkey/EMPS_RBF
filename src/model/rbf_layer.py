@@ -143,7 +143,7 @@ class RBFLayer(nn.Module):
         self.reset()
 
     def reset(self,
-              upper_bound_kernels: float = 1.0,
+              upper_bound_kernels: float = 10.0,
               std_shapes: float = 10.0,
               gain_weights: float = 10.0) -> None:
         """
@@ -207,7 +207,7 @@ class RBFLayer(nn.Module):
                                         self.in_features_dim)
 
         #Rescale
-        c = self.search_interval(c, -1, 1)
+        #c = self.search_interval(c, -1, 1)
 
         diff = input.view(batch_size, 1, self.in_features_dim) - c
 
@@ -215,7 +215,7 @@ class RBFLayer(nn.Module):
         r = self.norm_function(diff)
 
         sigma = self.log_shapes.expand(batch_size, self.num_kernels) 
-        sigma = self.search_interval(sigma, 0.01, 1)
+        #sigma = self.search_interval(sigma, 0.01, 1)
 
 
         # Apply parameter, eps_r has size B x num_kernels
@@ -233,7 +233,7 @@ class RBFLayer(nn.Module):
         wi = self.weights.expand(batch_size, self.out_features_dim,
                                   self.num_kernels)
 
-        wi = self.search_interval(wi, -100, 100)
+        #wi = self.search_interval(wi, -100, 100)
         out = wi*rbfs.view(batch_size, 1, self.num_kernels)
 
         return out.sum(dim=-1)
