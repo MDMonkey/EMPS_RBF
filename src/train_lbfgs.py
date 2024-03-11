@@ -9,6 +9,8 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+from sklearn.preprocessing import MinMaxScaler
+
 
 
 if __name__ == "__main__":
@@ -30,14 +32,34 @@ if __name__ == "__main__":
 
     dtype = T.float64
 
+    
+
     #Data
     #Train
     t_train, u_train, y_train = import_data(args,True)
+    
+    
+    #Scaler
+    scaler_inp = MinMaxScaler()
+    scaler_inp.fit(u_train)
+
+    scaler_out = MinMaxScaler()
+    scaler_out.fit(y_train)
+
+    #Scaled Input inverse = scaler.inverse_transform(normalized)
+    #u_train = scaler_inp.transform(u_train)
+    #y_train = scaler_out.transform(y_train)
     u_train, y_train= Tensor(u_train).to(device), Tensor(y_train).to(device)
 
     #Test
     t_test, u_test, y_test = import_data(args,False)
+    #u_test = scaler_inp.transform(u_test)
+    #y_test = scaler_out.transform(y_test)
     u_test, y_test = Tensor(u_test).to(device), Tensor(y_test).to(device)
+
+    #Scale the Test
+    
+
 
     #Initial 
     initial_state_test = T.zeros(2)
@@ -45,8 +67,8 @@ if __name__ == "__main__":
     #initial_state_test[1] = Tensor([-0.0457]).to(device)
     y_test = y_test[1:]
     u_test = u_test[1:]
-    y_test = y_test[1:int(0.3*len(y_test))]
-    u_test = u_test[1:int(0.3*len(u_test))]
+    y_test = y_test[1:int(args.VAL_SPLIT*len(y_test))]
+    u_test = u_test[1:int(args.VAL_SPLIT*len(u_test))]
 
     initial_state = T.zeros(2)
     initial_state[0] = Tensor(y_train[0]).to(device)
@@ -55,8 +77,8 @@ if __name__ == "__main__":
 
     y_train = y_train[1:]
     u_train = u_train[1:]
-    y_train = y_train[1:int(0.3*len(y_train))]
-    u_train = u_train[1:int(0.3*len(u_train))]
+    y_train = y_train[1:int(args.TRAIN_SPLIT*len(y_train))]
+    u_train = u_train[1:int(args.TRAIN_SPLIT*len(u_train))]
 
     #################### RBF - Layer ###########################
     #Option 1 - https://github.com/JeremyLinux/PyTorch-Radial-Basis-Function-Layer/tree/master
@@ -98,7 +120,7 @@ if __name__ == "__main__":
     optimizer = LBFGSNew(model.parameters(), history_size=20, max_iter=20, line_search_fn=True,batch_mode=True)
     
 
-    early_stopper = ValidationLossEarlyStopping(patience=4, min_delta=1e-9)
+    early_stopper = ValidationLossEarlyStopping(patience=5, min_delta=1e-9)
 
 
     #step_lr_scheduler = T.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=7,gamma=0.1)
@@ -128,6 +150,7 @@ if __name__ == "__main__":
             return loss
         
         # perform a single optimization step (parameter update)
+        nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step(closure)
         loss = closure()
 
@@ -167,12 +190,17 @@ if __name__ == "__main__":
     # \n is placed to indicate EOL (End of Line)
     F.write(results_folder+" \n")
     F.write('Epoch: {} \tTraining Loss: {:.6f} \t'.format(epoch, train_loss))
-    F.write('Validation Loss: {} \t'.format(valid_loss))
+    F.write('Validation Loss: {} \n'.format(valid_loss))
     F.write('Best Loss: {} \t'.format(best_loss))
     F.write('Learning Rate: {} \n'.format(args.LEARNING_RATE))
     F.write('Batch Size: {} \t'.format(args.BATCH_SIZE))
     F.write('Number of Epochs: {} \t'.format(args.N_EPOCHS))
     F.write('Number of kernels: {} \t'.format(args.NUM_KERNELS))
+    F.write('NORMALIZE_INPUT: {} \t'.format(args.NORMALIZE_INPUT))
+    F.write('Train perc {} \n'.format(args.TRAIN_SPLIT))
+    F.write('val perc {} \n'.format(args.VAL_SPLIT))
+    
+
     F.write('Optimizer Settings {} \t')
     F.write(str(optimizer.__str__()))
 
@@ -193,8 +221,8 @@ if __name__ == "__main__":
 
     
     # plotting prediction results
-    plt.plot(t_test[1:], y_test, 'gray')
-    plt.plot(t_test[1:], yPred, 'b', label='after training')
+    plt.plot(t_test[1:int(args.VAL_SPLIT*len(t_test))], y_test, 'gray')
+    plt.plot(t_test[1:int(args.VAL_SPLIT*len(t_test))], yPred, 'b', label='after training')
     plt.xlabel('t')
     plt.ylabel('y')
     plt.grid('on')
