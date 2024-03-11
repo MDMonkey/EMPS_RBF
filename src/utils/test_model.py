@@ -3,6 +3,8 @@ sys.path.append(r"C:\Users\totti\OneDrive\Documents\Coding\rk_function\EMPS_RBF\
 from utils.read_utils import *
 from utils.config_ import *
 from model.utils_pytorch import *
+import scipy.io
+
 
 import torch as T
 from torch.utils.data import DataLoader
@@ -39,16 +41,16 @@ if __name__ == "__main__":
     initial_state_test = T.zeros(2)
     initial_state_test[0] = Tensor(y_test[0]).to(device)
     #initial_state_test[1] = Tensor([-0.0457]).to(device)
-    y_test = y_test[1:]
-    u_test = u_test[1:]
+    y_test = y_test
+    u_test = u_test
 
     initial_state = T.zeros(2)
     initial_state[0] = Tensor(y_train[0]).to(device)
     initial_state = initial_state.to(device)
     dt = t_train[22] - t_train[21]
 
-    y_train = y_train[1:]
-    u_train = u_train[1:]
+    y_train = y_train
+    u_train = u_train
 
     #OPTION 2  https://github.com/rssalessio/PytorchRBFLayer/tree/main
     rbf = rbf_network_(args)
@@ -66,7 +68,7 @@ if __name__ == "__main__":
     model = RNN_Cell(rk4)
     model.to(device)
 
-    model.load_state_dict(T.load(r"C:\Users\totti\OneDrive\Documents\Coding\rk_function\EMPS_RBF\Results2_\Test_11\model.pth"))
+    model.load_state_dict(T.load(r"C:\Users\totti\OneDrive\Documents\Coding\rk_function\EMPS_RBF\Results2_\Test_37\model.pth"))
 
     output_data = y_train[:,0]
 
@@ -87,13 +89,13 @@ if __name__ == "__main__":
 
 
     # plotting prediction results
-    plt.plot(t_test[1:], y_test, 'gray')
-    plt.plot(t_test[1:], yPred, 'b', label='after training')
+    plt.plot(t_test, y_test, 'gray')
+    plt.plot(t_test, yPred, 'b', label='after training')
     plt.xlabel('t')
     plt.ylabel('y')
     plt.grid('on')
     plt.legend()
     plt.show()
 
-    
+    scipy.io.savemat(r'C:\Users\totti\OneDrive\Documents\Coding\rk_function\EMPS_RBF\Results2_\Test_37\results.mat', dict(x=t_test[1:], y=yPred))
 
